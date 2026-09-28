@@ -1,0 +1,64 @@
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f6f8; }
+
+.app-layout { display: flex; flex-direction: column; height: 100vh; }
+
+.top-nav {
+    background: #1e3a5f; color: white; padding: 0.75rem 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.top-nav .brand { font-weight: 600; font-size: 1.15rem; }
+.top-nav a { color: #cfe0f5; text-decoration: none; margin-left: 1.25rem; }
+.top-nav a:hover { color: white; }
+
+.main-content { flex: 1; display: flex; overflow: hidden; }
+
+.sidebar {
+    width: 340px; background: white; border-right: 1px solid #e2e5e9;
+    padding: 1rem; overflow-y: auto;
+}
+
+.map-container { flex: 1; position: relative; }
+#campus-map { width: 100%; height: 100%; }
+
+.search-box {
+    width: 100%; padding: 0.6rem; border: 1px solid #d0d5db; border-radius: 6px;
+    font-size: 0.95rem; margin-bottom: 0.75rem;
+}
+
+.location-item {
+    padding: 0.6rem; border-radius: 6px; cursor: pointer; margin-bottom: 0.35rem;
+    border: 1px solid transparent;
+}
+.location-item:hover { background: #eef3fb; border-color: #d3e0f2; }
+.location-item .name { font-weight: 600; color: #1e3a5f; }
+.location-item .category { font-size: 0.8rem; color: #6b7280; }
+
+.directions-panel { border-top: 1px solid #e2e5e9; margin-top: 1rem; padding-top: 1rem; }
+.directions-panel select { width: 100%; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 6px; border: 1px solid #d0d5db; }
+
+.btn-primary {
+    background: #2563eb; color: white; border: none; padding: 0.6rem 1rem;
+    border-radius: 6px; cursor: pointer; font-weight: 500; width: 100%;
+}
+.btn-primary:hover { background: #1d4ed8; }
+.btn-primary:disabled { background: #9ab6e8; cursor: not-allowed; }
+
+.route-summary { margin-top: 0.75rem; padding: 0.75rem; background: #eef3fb; border-radius: 6px; font-size: 0.9rem; }
+
+.admin-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+.admin-table th, .admin-table td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #e5e7eb; }
+.admin-table th { background: #f4f6f8; }
+
+.form-group { margin-bottom: 0.85rem; }
+.form-group label { display: block; font-weight: 500; margin-bottom: 0.25rem; }
+.form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #d0d5db;
+}
+
+.error-text { color: #dc2626; font-size: 0.9rem; margin-top: 0.5rem; }
+
+#blazor-error-ui {
+    display: none; background: #fff3cd; border-top: 1px solid #ffc107;
+    padding: 0.75rem 1rem; position: fixed; bottom: 0; width: 100%;
+}

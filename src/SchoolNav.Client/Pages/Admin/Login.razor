@@ -1,0 +1,44 @@
+@page "/admin/login"
+@inject AuthService Auth
+@inject ApiService Api
+@inject NavigationManager Nav
+
+<div style="max-width:400px;margin:3rem auto;background:white;padding:2rem;border-radius:8px;">
+    <h3>Admin Login</h3>
+
+    <div class="form-group">
+        <label>Email</label>
+        <input @bind="email" placeholder="admin@ug.edu.gh" />
+    </div>
+    <div class="form-group">
+        <label>Password</label>
+        <input type="password" @bind="password" />
+    </div>
+
+    <button class="btn-primary" @onclick="DoLogin">Log In</button>
+
+    @if (errorMessage is not null)
+    {
+        <p class="error-text">@errorMessage</p>
+    }
+
+    <p style="font-size:0.8rem;color:#6b7280;margin-top:1rem;">
+        Default seeded admin: admin@ug.edu.gh / Admin@12345 (change this after first login).
+    </p>
+</div>
+
+@code {
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string? errorMessage;
+
+    private async Task DoLogin()
+    {
+        errorMessage = null;
+        var success = await Auth.LoginAsync(Api, email, password);
+        if (success)
+            Nav.NavigateTo("/admin");
+        else
+            errorMessage = "Invalid email or password.";
+    }
+}

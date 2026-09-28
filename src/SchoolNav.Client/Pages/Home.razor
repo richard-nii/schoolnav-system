@@ -1,0 +1,139 @@
+@page "/"
+@inject ApiService Api
+@inject IJSRuntime JS
+
+<div class="sidebar">
+    <input class="search-box" placeholder="Search classrooms, offices, libraries..."
+           @bind="searchTerm" @bind:event="oninput" @onkeyup="OnSearchChanged" />
+
+    @if (isLoading)
+    {
+        <p>Loading locations...</p>
+    }
+    else
+    {
+        @foreach (var loc in filteredLocations)
+        {
+            <div class="location-item" @onclick="() => FocusLocation(loc)">
+                <div class="name">@loc.Name</div>
+                <div class="category">@loc.Category</div>
+            </div>
+        }
+        @if (!filteredLocations.Any())
+        {
+            <p>No matching locations found.</p>
+        }
+    }
+
+    <div class="directions-panel">
+        <h4>Get Directions</h4>
+        <select @bind="fromLocationId">
+            <option value="0">-- From --</option>
+            @foreach (var loc in allLocations)
+            {
+                <option value="@loc.Id">@loc.Name</option>
+            }
+        </select>
+        <select @bind="toLocationId">
+            <option value="0">-- To --</option>
+            @foreach (var loc in allLocations)
+            {
+                <option value="@loc.Id">@loc.Name</option>
+            }
+        </select>
+        <button class="btn-primary" @onclick="CalculateRoute" disabled="@(fromLocationId == 0 || toLocationId == 0)">
+            Show Route
+        </button>
+
+        @if (routeError is not null)
+        {
+            <p class="error-text">@routeError</p>
+        }
+
+        @if (routeResult is not null && routeResult.Found)
+        {
+            <div class="route-summary">
+                Distance: <strong>@Math.Round(routeResult.TotalDistanceMeters)m</strong>
+                (~@Math.Ceiling(routeResult.TotalDistanceMeters / 80) min walk)
+            </div>
+        }
+    </div>
+</div>
+
+<div class="map-container">
+    <div id="campus-map"></div>
+</div>
+
+@code {
+    // Centered on University of Ghana, Legon campus.
+    private const double CampusCenterLat = 5.6500;
+    private const double CampusCenterLng = -0.1873;
+
+    private List<LocationDto> allLocations = new();
+    private List<LocationDto> filteredLocations = new();
+    private string searchTerm = string.Empty;
+    private bool isLoading = true;
+
+    private int fromLocationId = 0;
+    private int toLocationId = 0;
+    private RouteResultDto? routeResult;
+    private string? routeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        allLocations = await Api.GetLocationsAsync();
+        filteredLocations = allLocations;
+        isLoading = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("schoolNavMap.init", "campus-map", CampusCenterLat, CampusCenterLng, 16);
+            await RenderMarkers();
+        }
+    }
+
+    private async Task RenderMarkers()
+    {
+        await JS.InvokeVoidAsync("schoolNavMap.clearMarkers");
+        foreach (var loc in filteredLocations)
+        {
+            await JS.InvokeVoidAsync("schoolNavMap.addLocationMarker", loc.Id, loc.Latitude, loc.Longitude, loc.Name, loc.Category.ToString());
+        }
+    }
+
+    private async Task OnSearchChanged(KeyboardEventArgs e)
+    {
+        filteredLocations = string.IsNullOrWhiteSpace(searchTerm)
+            ? allLocations
+            : allLocations.Where(l => l.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
+        await RenderMarkers();
+    }
+
+    private async Task FocusLocation(LocationDto loc)
+    {
+        await JS.InvokeVoidAsync("schoolNavMap.focusLocation", loc.Id, loc.Latitude, loc.Longitude);
+    }
+
+    private async Task CalculateRoute()
+    {
+        routeError = null;
+        routeResult = await Api.GetRouteAsync(fromLocationId, toLocationId);
+
+        if (routeResult is null || !routeResult.Found)
+        {
+            routeError = "No route could be found between those two locations.";
+            await JS.InvokeVoidAsync("schoolNavMap.clearRoute");
+            return;
+        }
+
+        var jsonOptions = new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+        };
+        var pointsJson = System.Text.Json.JsonSerializer.Serialize(routeResult.Path, jsonOptions);
+        await JS.InvokeVoidAsync("schoolNavMap.drawRoute", pointsJson);
+    }
+}

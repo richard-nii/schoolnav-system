@@ -1,0 +1,31 @@
+@page "/admin"
+@inject AuthService Auth
+@inject NavigationManager Nav
+
+@if (!Auth.IsAdmin)
+{
+    <p style="padding:2rem;">You must be logged in as an admin to view this page. <a href="/admin/login">Log in</a></p>
+}
+else
+{
+    <div style="padding:2rem;max-width:700px;">
+        <h2>Admin Dashboard</h2>
+        <p>Welcome, @Auth.FullName.</p>
+
+        <div style="display:flex;gap:1rem;margin-top:1.5rem;">
+            <a class="btn-primary" style="text-decoration:none;text-align:center;" href="/admin/locations">
+                Manage Locations
+            </a>
+            <a class="btn-primary" style="text-decoration:none;text-align:center;" href="/admin/nodes">
+                Manage Walkway Graph (Nodes &amp; Edges)
+            </a>
+        </div>
+    </div>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        if (!Auth.IsLoggedIn) Nav.NavigateTo("/admin/login");
+    }
+}

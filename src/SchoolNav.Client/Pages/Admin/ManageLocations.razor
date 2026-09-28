@@ -1,0 +1,188 @@
+@page "/admin/locations"
+@inject ApiService Api
+@inject AuthService Auth
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (!Auth.IsAdmin)
+{
+    <p style="padding:2rem;">Admins only. <a href="/admin/login">Log in</a></p>
+}
+else
+{
+    <div class="sidebar">
+        <h3>Locations</h3>
+        <p style="font-size:0.85rem;color:#6b7280;">Click the map to set coordinates for a new location, or select an existing one below to edit it.</p>
+
+        <div class="form-group">
+            <label>Name</label>
+            <input @bind="formName" />
+        </div>
+        <div class="form-group">
+            <label>Category</label>
+            <select @bind="formCategory">
+                @foreach (var cat in Enum.GetValues<LocationCategory>())
+                {
+                    <option value="@cat">@cat</option>
+                }
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Description</label>
+            <textarea @bind="formDescription" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+            <label>Latitude / Longitude (click map)</label>
+            <input value="@($"{formLat:F6}, {formLng:F6}")" readonly />
+        </div>
+        <div class="form-group">
+            <label>Nearest Walkway Node</label>
+            <select @bind="formNearestNodeId">
+                <option value="0">-- select node --</option>
+                @foreach (var node in allNodes)
+                {
+                    <option value="@node.Id">@(node.Label ?? $"Node {node.Id}")</option>
+                }
+            </select>
+        </div>
+
+        <div style="display:flex;gap:0.5rem;">
+            <button class="btn-primary" @onclick="Save">@(editingId is null ? "Add Location" : "Update Location")</button>
+            @if (editingId is not null)
+            {
+                <button class="btn-primary" style="background:#6b7280;" @onclick="ResetForm">Cancel</button>
+            }
+        </div>
+
+        @if (errorMessage is not null)
+        {
+            <p class="error-text">@errorMessage</p>
+        }
+
+        <table class="admin-table">
+            <thead><tr><th>Name</th><th>Category</th><th></th></tr></thead>
+            <tbody>
+                @foreach (var loc in locations)
+                {
+                    <tr>
+                        <td>@loc.Name</td>
+                        <td>@loc.Category</td>
+                        <td>
+                            <a href="#" @onclick="() => Edit(loc)" @onclick:preventDefault>Edit</a> |
+                            <a href="#" @onclick="() => Delete(loc.Id)" @onclick:preventDefault>Delete</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="map-container">
+        <div id="campus-map"></div>
+    </div>
+}
+
+@code {
+    private List<LocationDto> locations = new();
+    private List<NodeDto> allNodes = new();
+
+    private string formName = "";
+    private LocationCategory formCategory = LocationCategory.Other;
+    private string? formDescription;
+    private double formLat = 5.6500;
+    private double formLng = -0.1873;
+    private int formNearestNodeId = 0;
+
+    private int? editingId;
+    private string? errorMessage;
+    private DotNetObjectReference<ManageLocations>? dotNetRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        locations = await Api.GetLocationsAsync();
+        allNodes = await Api.GetNodesAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("schoolNavMap.init", "campus-map", 5.6500, -0.1873, 16);
+            foreach (var loc in locations)
+                await JS.InvokeVoidAsync("schoolNavMap.addLocationMarker", loc.Id, loc.Latitude, loc.Longitude, loc.Name, loc.Category.ToString());
+
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("schoolNavMap.enableClickToPlace", dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public void OnMapClicked(double lat, double lng)
+    {
+        formLat = lat;
+        formLng = lng;
+        StateHasChanged();
+    }
+
+    private void Edit(LocationDto loc)
+    {
+        editingId = loc.Id;
+        formName = loc.Name;
+        formCategory = loc.Category;
+        formDescription = loc.Description;
+        formLat = loc.Latitude;
+        formLng = loc.Longitude;
+        formNearestNodeId = loc.NearestNodeId;
+    }
+
+    private void ResetForm()
+    {
+        editingId = null;
+        formName = "";
+        formCategory = LocationCategory.Other;
+        formDescription = null;
+        formLat = 5.6500;
+        formLng = -0.1873;
+        formNearestNodeId = 0;
+    }
+
+    private async Task Save()
+    {
+        errorMessage = null;
+        if (string.IsNullOrWhiteSpace(formName) || formNearestNodeId == 0)
+        {
+            errorMessage = "Name and nearest walkway node are required.";
+            return;
+        }
+
+        var form = new LocationCreateDto(formName, formCategory, formDescription, formLat, formLng, formNearestNodeId);
+
+        bool success = editingId is null
+            ? await Api.CreateLocationAsync(form)
+            : await Api.UpdateLocationAsync(editingId.Value, form);
+
+        if (!success)
+        {
+            errorMessage = "Save failed. Make sure you're logged in as an admin.";
+            return;
+        }
+
+        locations = await Api.GetLocationsAsync();
+        ResetForm();
+    }
+
+    private async Task Delete(int id)
+    {
+        await Api.DeleteLocationAsync(id);
+        locations = await Api.GetLocationsAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (dotNetRef is not null)
+        {
+            await JS.InvokeVoidAsync("schoolNavMap.disableClickToPlace");
+            dotNetRef.Dispose();
+        }
+    }
+}

@@ -1,0 +1,147 @@
+@page "/admin/nodes"
+@inject ApiService Api
+@inject AuthService Auth
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (!Auth.IsAdmin)
+{
+    <p style="padding:2rem;">Admins only. <a href="/admin/login">Log in</a></p>
+}
+else
+{
+    <div class="sidebar">
+        <h3>Walkway Graph</h3>
+        <p style="font-size:0.85rem;color:#6b7280;">
+            Click the map to capture coordinates, then add a Node. Nodes are the points that paths connect —
+            this is what Dijkstra routes through.
+        </p>
+
+        <div class="form-group">
+            <label>Label</label>
+            <input @bind="nodeLabel" placeholder="e.g. Near Balme Library" />
+        </div>
+        <div class="form-group">
+            <label>Type</label>
+            <select @bind="nodeType">
+                @foreach (var t in Enum.GetValues<NodeType>())
+                {
+                    <option value="@t">@t</option>
+                }
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Coordinates (click map)</label>
+            <input value="@($"{clickedLat:F6}, {clickedLng:F6}")" readonly />
+        </div>
+        <button class="btn-primary" @onclick="AddNode">Add Node</button>
+
+        <h4 style="margin-top:1.5rem;">Connect Two Nodes (Edge)</h4>
+        <div class="form-group">
+            <label>From Node</label>
+            <select @bind="edgeFromId">
+                <option value="0">-- select --</option>
+                @foreach (var n in nodes)
+                {
+                    <option value="@n.Id">@(n.Label ?? $"Node {n.Id}")</option>
+                }
+            </select>
+        </div>
+        <div class="form-group">
+            <label>To Node</label>
+            <select @bind="edgeToId">
+                <option value="0">-- select --</option>
+                @foreach (var n in nodes)
+                {
+                    <option value="@n.Id">@(n.Label ?? $"Node {n.Id}")</option>
+                }
+            </select>
+        </div>
+        <button class="btn-primary" @onclick="AddEdge">Connect Nodes</button>
+
+        @if (errorMessage is not null)
+        {
+            <p class="error-text">@errorMessage</p>
+        }
+
+        <p style="margin-top:1rem;font-size:0.85rem;">@nodes.Count nodes, @edges.Count edges</p>
+    </div>
+
+    <div class="map-container">
+        <div id="campus-map"></div>
+    </div>
+}
+
+@code {
+    private List<NodeDto> nodes = new();
+    private List<EdgeDto> edges = new();
+    private string nodeLabel = string.Empty;
+    private NodeType nodeType = NodeType.Waypoint;
+    private double clickedLat = 5.6500, clickedLng = -0.1873;
+    private int edgeFromId, edgeToId;
+    private string? errorMessage;
+    private DotNetObjectReference<ManageNodes>? dotNetRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        nodes = await Api.GetNodesAsync();
+        edges = await Api.GetEdgesAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("schoolNavMap.init", "campus-map", 5.6500, -0.1873, 16);
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("schoolNavMap.enableClickToPlace", dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public void OnMapClicked(double lat, double lng)
+    {
+        clickedLat = lat;
+        clickedLng = lng;
+        StateHasChanged();
+    }
+
+    private async Task AddNode()
+    {
+        errorMessage = null;
+        var created = await Api.CreateNodeAsync(new NodeCreateDto(clickedLat, clickedLng, nodeType, nodeLabel));
+        if (created is null)
+        {
+            errorMessage = "Failed to add node. Make sure you're logged in as an admin.";
+            return;
+        }
+        nodes = await Api.GetNodesAsync();
+        nodeLabel = string.Empty;
+    }
+
+    private async Task AddEdge()
+    {
+        errorMessage = null;
+        if (edgeFromId == 0 || edgeToId == 0 || edgeFromId == edgeToId)
+        {
+            errorMessage = "Choose two different nodes to connect.";
+            return;
+        }
+        var success = await Api.CreateEdgeAsync(new EdgeCreateDto(edgeFromId, edgeToId));
+        if (!success)
+        {
+            errorMessage = "Failed to create edge.";
+            return;
+        }
+        edges = await Api.GetEdgesAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (dotNetRef is not null)
+        {
+            await JS.InvokeVoidAsync("schoolNavMap.disableClickToPlace");
+            dotNetRef.Dispose();
+        }
+    }
+}
