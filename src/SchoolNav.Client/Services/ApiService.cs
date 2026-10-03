@@ -64,4 +64,18 @@ public class ApiService
         var response = await _http.PostAsJsonAsync("api/edges", dto);
         return response.IsSuccessStatusCode;
     }
+
+    public async Task<(bool success, string? error)> DeleteNodeAsync(int id)
+    {
+        var response = await _http.DeleteAsync($"api/nodes/{id}");
+        if (response.IsSuccessStatusCode) return (true, null);
+        var body = await response.Content.ReadAsStringAsync();
+        return (false, string.IsNullOrWhiteSpace(body) ? "Delete failed." : body);
+    }
+
+    public async Task<bool> DeleteEdgeAsync(int id)
+    {
+        var response = await _http.DeleteAsync($"api/edges/{id}");
+        return response.IsSuccessStatusCode;
+    }
 }

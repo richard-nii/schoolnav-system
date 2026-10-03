@@ -46,12 +46,13 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// --- CORS: allow the Blazor WASM client to call this API ---
-var allowedOrigin = builder.Configuration["Cors:AllowedOrigin"] ?? "https://localhost:7100";
+// --- CORS: allow the Blazor WASM client (dev and/or production) to call this API ---
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                      ?? new[] { "https://localhost:7100" };
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("ClientApp", policy =>
-        policy.WithOrigins(allowedOrigin)
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod());
 });

@@ -58,6 +58,36 @@ window.schoolNavMap = (function () {
         map.setView([lat, lng], zoom || map.getZoom());
     }
 
+    let graphLayer = null;
+
+    // Draws the walkway graph for the admin view: small circles for nodes,
+    // thin lines for edges, so it's clear where the graph currently goes.
+    function drawGraph(nodesJson, edgesJson) {
+        if (graphLayer) map.removeLayer(graphLayer);
+        graphLayer = L.layerGroup().addTo(map);
+
+        const nodes = JSON.parse(nodesJson);
+        const edges = JSON.parse(edgesJson);
+        const nodeById = {};
+        nodes.forEach(n => nodeById[n.id] = n);
+
+        edges.forEach(e => {
+            const a = nodeById[e.nodeAId];
+            const b = nodeById[e.nodeBId];
+            if (a && b) {
+                L.polyline([[a.latitude, a.longitude], [b.latitude, b.longitude]], {
+                    color: '#f59e0b', weight: 3, opacity: 0.8, dashArray: '6,4'
+                }).addTo(graphLayer);
+            }
+        });
+
+        nodes.forEach(n => {
+            L.circleMarker([n.latitude, n.longitude], {
+                radius: 6, color: '#dc2626', fillColor: '#dc2626', fillOpacity: 0.9
+            }).bindTooltip(n.label || `Node ${n.id}`).addTo(graphLayer);
+        });
+    }
+
     // Admin mode: lets the admin click the map to capture coordinates
     // for placing a new Node or Location, reported back to Blazor.
     function enableClickToPlace(dotNetHelper) {
@@ -91,6 +121,6 @@ window.schoolNavMap = (function () {
 
     return {
         init, clearMarkers, addLocationMarker, focusLocation, drawRoute, clearRoute,
-        centerOn, enableClickToPlace, disableClickToPlace, tryGetUserLocation
+        drawGraph, centerOn, enableClickToPlace, disableClickToPlace, tryGetUserLocation
     };
 })();

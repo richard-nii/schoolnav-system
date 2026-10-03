@@ -8,8 +8,9 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// Point this at your running SchoolNav.Api instance.
-var apiBaseUrl = "https://localhost:7200/";
+// Reads from wwwroot/appsettings.json in dev, wwwroot/appsettings.Production.json
+// automatically when published in Release/Production mode.
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "https://localhost:7200/";
 
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
 builder.Services.AddBlazoredLocalStorage();
