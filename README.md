@@ -14,17 +14,20 @@ src/
 
 ## Prerequisites
 
-- Visual Studio 2022 (17.8+) with the **ASP.NET and web development** workload, OR the
-  .NET 8 SDK + VS Code
-- SQL Server LocalDB (installed automatically with Visual Studio) — or point the
-  connection string at any SQL Server instance you have
+- .NET 10 SDK + VS Code (or Visual Studio 2022 on Windows) with the C# Dev Kit
+- Docker Desktop, for running PostgreSQL locally (the project uses PostgreSQL, not
+  SQL Server — see "Why PostgreSQL" below)
 
 ## First-time setup
 
-1. Open `SchoolNavigationSystem.sln` in Visual Studio.
-2. Let NuGet restore packages (this needs internet access — it will not work in a
-   sandboxed environment with no NuGet access).
-3. No manual migration step needed for a first run — the API calls
+1. Start a local PostgreSQL container:
+   ```
+   docker run -e POSTGRES_PASSWORD=YourStrong!Passw0rd -e POSTGRES_DB=SchoolNavDb -p 5432:5432 --name schoolnav-pg -d postgres:16
+   ```
+   (Postgres's official image runs natively on Apple Silicon, no `--platform` flag needed.)
+2. Open the `SchoolNavigationSystem` folder in VS Code, or the `.sln` in Visual Studio.
+3. Run `dotnet restore` from the repo root.
+4. No manual migration step needed for a first run — the API calls
    `Database.EnsureCreatedAsync()` on startup and seeds sample University of Ghana
    data automatically (see `Data/SeedData.cs`). If you'd rather use proper EF
    migrations (recommended if this grows past a class project), run:
@@ -33,10 +36,18 @@ src/
    dotnet ef database update --project src/SchoolNav.Api
    ```
    and remove the `EnsureCreatedAsync()` call in `Program.cs`.
-4. In Visual Studio, right-click the solution → **Set Startup Projects** → **Multiple
-   startup projects** → set both `SchoolNav.Api` and `SchoolNav.Client` to **Start**.
-5. Press **F5**. Two browser tabs should open: the API's Swagger page
-   (`https://localhost:7200/swagger`) and the Blazor app (`https://localhost:7100`).
+5. Run the API: `dotnet run --project src/SchoolNav.Api` (listens on `https://localhost:7200`).
+6. In a second terminal, run the client: `dotnet run --project src/SchoolNav.Client`
+   (listens on `https://localhost:7100`).
+
+## Why PostgreSQL instead of SQL Server?
+
+The project was originally built against SQL Server per the brief. It was switched to
+PostgreSQL specifically to deploy for free on Render.com without a credit card (Azure's
+free SQL Server-compatible tier requires student/account verification). If you get
+Azure access later, switching back is a small change: swap the `Npgsql.EntityFrameworkCore.PostgreSQL`
+package for `Microsoft.EntityFrameworkCore.SqlServer`, change `UseNpgsql` to `UseSqlServer`
+in `Program.cs`, and update the connection string format.
 
 ## Default admin login
 

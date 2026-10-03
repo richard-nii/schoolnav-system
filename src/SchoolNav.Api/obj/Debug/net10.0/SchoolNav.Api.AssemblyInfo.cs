@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SchoolNav.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e31c4c8e9e2ef8558313ee1718ff9129fb36b934")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e94f965001347302266d665c3dfc5d6724995459")]
 [assembly: System.Reflection.AssemblyProductAttribute("SchoolNav.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SchoolNav.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
